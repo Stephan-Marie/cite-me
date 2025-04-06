@@ -1,24 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cite Me - PDF Citation Generator
+
+Cite Me is an advanced citation and footnote transcriber tool that helps researchers, students, and writers generate proper citations for their work. The application can extract citations from PDF documents and check for uncited content against reference sources.
+
+## Features
+
+- Upload PDF files or paste text content for citation analysis
+- Support for multiple citation styles (APA, MLA, Chicago, OSCOLA, IEEE, AMA)
+- Detect improperly cited content and suggest corrections
+- Generate a comprehensive bibliography/footnotes section
+- Download citations in PDF or Word format
+- Modern, user-friendly interface
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+To run this project locally, you need:
+- Node.js 18.0 or later
+- A Supabase account for storage
+- An OpenAI API key
+- Browserless API key
+
+### Installation
+
+1. Clone this repository
+2. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Create a `.env.local` file with the following variables:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## Edge Function Setup
+
+This application uses Supabase Edge Functions for processing PDFs and generating citations. To set up the Edge Function:
+
+1. Deploy the Edge Function to your Supabase project
+2. Set the required environment variables in the Supabase Dashboard:
+   - OPENAI_API_KEY
+   - BROWSERLESS_API_KEY
+
+## License
+
+MIT
+
+## Acknowledgements
+
+- Built with Next.js
+- Uses OpenAI's GPT models for citation generation
+- Uses Browserless for PDF processing
+- Powered by Supabase for backend functionality
 
 ## Learn More
 
