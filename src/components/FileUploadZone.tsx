@@ -8,7 +8,6 @@ interface FileUploadZoneProps {
   selectedFiles: File[];
   onFileRemove?: (fileToRemove: File) => void;
   maxFiles?: number;
-  label?: string;
   description?: string;
   showDetails?: boolean;
 }
@@ -18,7 +17,6 @@ const FileUploadZone = ({
   selectedFiles, 
   onFileRemove,
   maxFiles = 10,
-  label = "Upload Files",
   description,
   showDetails = false
 }: FileUploadZoneProps) => {
