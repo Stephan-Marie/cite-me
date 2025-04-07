@@ -7,6 +7,7 @@ import EdgeFunctionTest from '../components/EdgeFunctionTest';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle, AlignmentType, Table, TableRow, TableCell, WidthType, Header, Footer } from 'docx';
 import { saveAs } from 'file-saver';
+import CitationEditor from '../components/CitationEditor';
 
 // Add these interfaces at the top of the file after imports
 interface EdgeFunctionResult {
@@ -431,9 +432,18 @@ export default function Home() {
     }
   };
 
-  // New function to generate and download PDF
+  // This function is new - it strips HTML tags for PDF/DOCX export
+  const stripHtmlTags = (html: string): string => {
+    if (!html) return '';
+    return html.replace(/<\/?[^>]+(>|$)/g, '');
+  };
+
+  // Modify the PDF handler to handle HTML content
   const handleDownloadPDF = (fileName: string, citation: string, footnotes?: string | string[]) => {
     try {
+      // Strip HTML tags for PDF generation
+      const plainTextCitation = stripHtmlTags(citation);
+      
       const doc = new jsPDF();
       const title = `Citation (${citationStyle}) - ${new Date().toLocaleDateString()}`;
       
@@ -445,7 +455,7 @@ export default function Home() {
       // Handle text wrapping for citation
       const maxWidth = 170;
       const citationLines = [];
-      let text = citation;
+      let text = plainTextCitation;
       
       while (text.length > 0) {
         // Find the position to split the text based on max width
@@ -543,9 +553,12 @@ export default function Home() {
     }
   };
 
-  // New function to generate and download .docx file
+  // Modify the DOCX handler to handle HTML content
   const handleDownloadDOCX = async (filename: string, citation: string, footnotes?: string | string[]) => {
     try {
+      // Strip HTML tags for DOCX generation
+      const plainTextCitation = stripHtmlTags(citation);
+      
       // Convert footnotes to string if it's an array
       const rawFootnotesText = typeof footnotes === 'string'
         ? footnotes
@@ -695,7 +708,7 @@ export default function Home() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: citation,
+                  text: plainTextCitation,
                   size: 24
                 })
               ]
@@ -959,8 +972,11 @@ export default function Home() {
                       
                       {isImprovedText ? (
                         <div className="mb-4">
-                          <div className="whitespace-pre-wrap text-sm text-gray-800 bg-white p-3 border border-blue-200 rounded mb-2 shadow-sm">
-                            {citation}
+                          <div className="border border-blue-200 rounded mb-2 shadow-sm">
+                            <CitationEditor 
+                              content={citation} 
+                              readOnly={true} 
+                            />
                           </div>
                           {citation.includes("No text improvements needed") ? (
                             <p className="text-sm text-green-600 italic">✓ No citation issues found</p>
@@ -983,9 +999,12 @@ export default function Home() {
                           )}
                         </div>
                       ) : (
-                        <pre className="whitespace-pre-wrap text-sm text-gray-600 pl-2 border-l-2 border-gray-300 bg-white p-3 rounded shadow-sm">
-                          {citation}
-                        </pre>
+                        <div className="border border-gray-200 rounded shadow-sm">
+                          <CitationEditor 
+                            content={citation} 
+                            readOnly={true} 
+                          />
+                        </div>
                       )}
                     </div>
                   );
