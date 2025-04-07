@@ -7,7 +7,7 @@ import EdgeFunctionTest from '../components/EdgeFunctionTest';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle, AlignmentType, Table, TableRow, TableCell, WidthType, Header, Footer } from 'docx';
 import { saveAs } from 'file-saver';
-import CitationEditor from '../components/CitationEditor';
+import RichTextEditor from '../components/RichTextEditor';
 
 // Add these interfaces at the top of the file after imports
 interface EdgeFunctionResult {
@@ -69,35 +69,6 @@ const processBibliographyText = (text: string, style: string): string => {
   }
 };
 
-// Helper function to process text and add citation highlighting
-const processTextWithCitations = (text: string): string => {
-  if (!text) return '';
-  
-  // Look for common citation patterns and wrap them with the in-text-citation class
-  // This regex looks for patterns like (Author, Year), [1], etc.
-  const citationPatterns = [
-    // Author-year format like (Smith, 2020)
-    /\(([A-Za-z\s]+,\s*\d{4})\)/g,
-    // Numbered format like [1] or [1,2,3]
-    /\[\d+(?:,\s*\d+)*\]/g,
-    // Footnote format like ¹ or ²
-    /[¹²³⁴⁵⁶⁷⁸⁹⁰]/g,
-    // Superscript numbers like 1, 2, 3
-    /<sup>\d+<\/sup>/g
-  ];
-  
-  let processedText = text;
-  
-  // Apply each pattern
-  citationPatterns.forEach(pattern => {
-    processedText = processedText.replace(pattern, match => 
-      `<span class="in-text-citation">${match}</span>`
-    );
-  });
-  
-  return processedText;
-};
-
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [masterFile, setMasterFile] = useState<File[]>([]);
@@ -108,6 +79,7 @@ export default function Home() {
   const [error, setError] = useState<string>('');
   const [citationStyle, setCitationStyle] = useState<string>('OSCOLA');
   const [results, setResults] = useState<EdgeFunctionResult[]>([]);
+  const [richTextContent, setRichTextContent] = useState<Record<string, string>>({});
 
   // Check Supabase connection on load
   useEffect(() => {
@@ -347,9 +319,7 @@ export default function Home() {
             
             response.data.results.forEach((result: EdgeFunctionResult) => {
               if (result && result.fileName && result.citation) {
-                // Process the citation text to add highlighting
-                const processedCitation = processTextWithCitations(result.citation);
-                newCitations[result.fileName] = processedCitation;
+                newCitations[result.fileName] = result.citation;
               } else {
                 console.warn('Invalid result format:', result);
               }
@@ -409,9 +379,7 @@ export default function Home() {
               
               data.results.forEach((result: EdgeFunctionResult) => {
                 if (result && result.fileName && result.citation) {
-                  // Process the citation text to add highlighting
-                  const processedCitation = processTextWithCitations(result.citation);
-                  newCitations[result.fileName] = processedCitation;
+                  newCitations[result.fileName] = result.citation;
                 }
               });
             }
@@ -465,119 +433,131 @@ export default function Home() {
     }
   };
 
-  // This function is new - it strips HTML tags for PDF/DOCX export
-  const stripHtmlTags = (html: string): string => {
-    if (!html) return '';
-    return html.replace(/<\/?[^>]+(>|$)/g, '');
-  };
-
-  // Modify the PDF handler to handle HTML content
+  // New function to generate and download PDF
   const handleDownloadPDF = (fileName: string, citation: string, footnotes?: string | string[]) => {
     try {
-      // Create a new PDF document
       const doc = new jsPDF();
+      const title = `Citation (${citationStyle}) - ${new Date().toLocaleDateString()}`;
       
-      // Set document properties
-      doc.setProperties({
-        title: `Citation for ${fileName}`,
-        subject: 'Citation',
-        author: 'Cite Me',
-        keywords: 'citation, reference, bibliography',
-        creator: 'Cite Me PDF Citation Generator'
-      });
-      
-      // Add title
       doc.setFontSize(16);
-      doc.text(`Citation for: ${fileName}`, 20, 20);
+      doc.text(title, 20, 20);
       
-      // Add citation style and date
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(`Style: ${citationStyle} | Generated: ${new Date().toLocaleDateString()}`, 20, 30);
-      
-      // Process the citation text to add highlighting
-      const processedCitation = processTextWithCitations(citation);
-      
-      // Add citation content
       doc.setFontSize(12);
-      doc.setTextColor(0);
       
-      // Split the citation into lines that fit the page width
-      const lines = doc.splitTextToSize(processedCitation, 170);
+      // Use rich text content if available, otherwise use plain citation
+      const contentToUse = richTextContent[fileName] || citation;
       
-      // Check if we need a new page for the citation
-      let y = 40;
-      if (lines.length > 20) {
-        doc.addPage();
-        y = 20;
+      // Handle text wrapping for citation
+      const maxWidth = 170;
+      const citationLines = [];
+      let text = contentToUse;
+      
+      while (text.length > 0) {
+        // Find the position to split the text based on max width
+        let splitPoint = text.length;
+        for (let i = 0; i < text.length; i++) {
+          const textWidth = doc.getStringUnitWidth(text.substring(0, i + 1)) * 12 * 0.352778;
+          if (textWidth > maxWidth) {
+            splitPoint = Math.max(text.lastIndexOf(' ', i), 0);
+            if (splitPoint === 0) splitPoint = i;
+            break;
+          }
+        }
+        
+        // Add the line and remove it from the text
+        citationLines.push(text.substring(0, splitPoint));
+        text = text.substring(splitPoint).trim();
       }
       
-      // Add the citation text
-      doc.text(lines, 20, y);
+      // Start the citation text at y-position 40
+      let yPos = 40;
+      
+      // Add a new page if the citation is too long
+      if (citationLines.length > 15) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      citationLines.forEach((line) => {
+        doc.text(line, 20, yPos);
+        yPos += 7;
+      });
       
       // Add footnotes if they exist
       if (footnotes) {
-        // Check if we need a new page for footnotes
-        if (y + (lines.length * 7) > 250) {
+        // Check if we need a new page
+        if (yPos > 250) {
           doc.addPage();
-          y = 20;
-        } else {
-          y = y + (lines.length * 7) + 10;
+          yPos = 20;
         }
         
-        // Add footnotes header
+        yPos += 10;
         doc.setFontSize(14);
-        doc.text('References/Footnotes:', 20, y);
-        y += 10;
+        doc.text('References:', 20, yPos);
+        doc.setFontSize(10);
         
-        // Process footnotes text
-        let footnotesText = '';
-        if (Array.isArray(footnotes)) {
-          footnotesText = footnotes.join('\n\n');
-        } else {
-          footnotesText = footnotes;
+        yPos += 7;
+        
+        const footnotesText = Array.isArray(footnotes) ? footnotes.join('\n\n') : footnotes;
+        
+        // Handle text wrapping for footnotes
+        const footnoteLines = [];
+        let footText = footnotesText;
+        
+        while (footText.length > 0) {
+          let splitPoint = footText.length;
+          for (let i = 0; i < footText.length; i++) {
+            const textWidth = doc.getStringUnitWidth(footText.substring(0, i + 1)) * 10 * 0.352778;
+            if (textWidth > maxWidth) {
+              splitPoint = Math.max(footText.lastIndexOf(' ', i), 0);
+              if (splitPoint === 0) splitPoint = i;
+              break;
+            }
+          }
+          
+          footnoteLines.push(footText.substring(0, splitPoint));
+          footText = footText.substring(splitPoint).trim();
         }
         
-        // Split footnotes into lines
-        const footnotesLines = doc.splitTextToSize(footnotesText, 170);
-        
-        // Add the footnotes text
-        doc.setFontSize(12);
-        doc.text(footnotesLines, 20, y);
+        footnoteLines.forEach((line) => {
+          // Add a new page if we're near the bottom
+          if (yPos > 280) {
+            doc.addPage();
+            yPos = 20;
+          }
+          
+          doc.text(line, 20, yPos);
+          yPos += 5;
+        });
       }
       
       // Add page numbers
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 40, doc.internal.pageSize.height - 10, { align: 'right' });
+        doc.text(`Page ${i} of ${totalPages}`, 20, 290);
       }
       
-      // Save the PDF
-      doc.save(`citation_${fileName.replace(/\.[^/.]+$/, '')}.pdf`);
-    } catch (error: any) {
+      // Save with a formatted filename
+      const sanitizedFileName = fileName.replace(/[^\w\s.-]/g, '_');
+      doc.save(`citation_${sanitizedFileName}.pdf`);
+    } catch (error) {
       console.error('Error generating PDF:', error);
-      setError(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
+      setError('Failed to generate PDF: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
-  // Modify the DOCX handler to handle HTML content
+  // New function to generate and download .docx file
   const handleDownloadDOCX = async (filename: string, citation: string, footnotes?: string | string[]) => {
     try {
-      // Strip HTML tags for DOCX generation
-      const plainTextCitation = stripHtmlTags(citation);
-      
-      // Convert footnotes to string if it's an array
-      const rawFootnotesText = typeof footnotes === 'string'
-        ? footnotes
-        : Array.isArray(footnotes)
-          ? footnotes.join('\n\n')
-          : '';
+      // Use rich text content if available, otherwise use plain citation
+      const contentToUse = richTextContent[filename] || citation;
+      const footnotesToUse = footnotes ? (richTextContent[`${filename}_footnotes`] || 
+        (typeof footnotes === 'string' ? footnotes : footnotes.join('\n\n'))) : '';
 
       // Process footnotes based on citation style
-      const footnotesText = processBibliographyText(rawFootnotesText, citationStyle);
+      const footnotesText = processBibliographyText(footnotesToUse, citationStyle);
 
       // Create a new docx document with professional styling
       const doc = new Document({
@@ -718,7 +698,7 @@ export default function Home() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: plainTextCitation,
+                  text: contentToUse,
                   size: 24
                 })
               ]
@@ -794,6 +774,14 @@ export default function Home() {
       console.error('Error generating DOCX:', error);
       setError('Failed to generate DOCX: ' + (error instanceof Error ? error.message : String(error)));
     }
+  };
+
+  // Add this function to handle rich text changes
+  const handleRichTextChange = (filename: string, content: string) => {
+    setRichTextContent(prev => ({
+      ...prev,
+      [filename]: content
+    }));
   };
 
   return (
@@ -982,10 +970,11 @@ export default function Home() {
                       
                       {isImprovedText ? (
                         <div className="mb-4">
-                          <div className="border border-blue-200 rounded mb-2 shadow-sm">
-                            <CitationEditor 
-                              content={citation} 
-                              readOnly={true} 
+                          <div className="text-sm text-gray-800 bg-white p-3 border border-blue-200 rounded mb-2 shadow-sm">
+                            <RichTextEditor
+                              initialValue={citation}
+                              onChange={(content) => handleRichTextChange(filename, content)}
+                              height={200}
                             />
                           </div>
                           {citation.includes("No text improvements needed") ? (
@@ -998,21 +987,26 @@ export default function Home() {
                           {hasFootnotes && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <p className="font-medium text-sm text-gray-700 mb-2">References/Footnotes:</p>
-                              <div className="whitespace-pre-wrap text-sm text-gray-700 pl-2 border-l-2 border-blue-300 bg-[#f0f7ff] p-3 rounded shadow-sm">
-                                {typeof resultObj.footnotes === 'string' 
-                                  ? resultObj.footnotes 
-                                  : Array.isArray(resultObj.footnotes) 
-                                    ? resultObj.footnotes.join('\n\n')
-                                    : ''}
+                              <div className="text-sm text-gray-700 pl-2 border-l-2 border-blue-300 bg-[#f0f7ff] p-3 rounded shadow-sm">
+                                <RichTextEditor
+                                  initialValue={typeof resultObj.footnotes === 'string' 
+                                    ? resultObj.footnotes 
+                                    : Array.isArray(resultObj.footnotes) 
+                                      ? resultObj.footnotes.join('\n\n')
+                                      : ''}
+                                  onChange={(content) => handleRichTextChange(`${filename}_footnotes`, content)}
+                                  height={150}
+                                />
                               </div>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <div className="border border-gray-200 rounded shadow-sm">
-                          <CitationEditor 
-                            content={citation} 
-                            readOnly={true} 
+                        <div className="text-sm text-gray-600 pl-2 border-l-2 border-gray-300 bg-white p-3 rounded shadow-sm">
+                          <RichTextEditor
+                            initialValue={citation}
+                            onChange={(content) => handleRichTextChange(filename, content)}
+                            height={150}
                           />
                         </div>
                       )}
