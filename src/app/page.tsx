@@ -69,6 +69,35 @@ const processBibliographyText = (text: string, style: string): string => {
   }
 };
 
+// Helper function to process text and add citation highlighting
+const processTextWithCitations = (text: string): string => {
+  if (!text) return '';
+  
+  // Look for common citation patterns and wrap them with the in-text-citation class
+  // This regex looks for patterns like (Author, Year), [1], etc.
+  const citationPatterns = [
+    // Author-year format like (Smith, 2020)
+    /\(([A-Za-z\s]+,\s*\d{4})\)/g,
+    // Numbered format like [1] or [1,2,3]
+    /\[\d+(?:,\s*\d+)*\]/g,
+    // Footnote format like ¹ or ²
+    /[¹²³⁴⁵⁶⁷⁸⁹⁰]/g,
+    // Superscript numbers like 1, 2, 3
+    /<sup>\d+<\/sup>/g
+  ];
+  
+  let processedText = text;
+  
+  // Apply each pattern
+  citationPatterns.forEach(pattern => {
+    processedText = processedText.replace(pattern, match => 
+      `<span class="in-text-citation">${match}</span>`
+    );
+  });
+  
+  return processedText;
+};
+
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [masterFile, setMasterFile] = useState<File[]>([]);
@@ -318,7 +347,9 @@ export default function Home() {
             
             response.data.results.forEach((result: EdgeFunctionResult) => {
               if (result && result.fileName && result.citation) {
-                newCitations[result.fileName] = result.citation;
+                // Process the citation text to add highlighting
+                const processedCitation = processTextWithCitations(result.citation);
+                newCitations[result.fileName] = processedCitation;
               } else {
                 console.warn('Invalid result format:', result);
               }
@@ -378,7 +409,9 @@ export default function Home() {
               
               data.results.forEach((result: EdgeFunctionResult) => {
                 if (result && result.fileName && result.citation) {
-                  newCitations[result.fileName] = result.citation;
+                  // Process the citation text to add highlighting
+                  const processedCitation = processTextWithCitations(result.citation);
+                  newCitations[result.fileName] = processedCitation;
                 }
               });
             }
@@ -441,115 +474,92 @@ export default function Home() {
   // Modify the PDF handler to handle HTML content
   const handleDownloadPDF = (fileName: string, citation: string, footnotes?: string | string[]) => {
     try {
-      // Strip HTML tags for PDF generation
-      const plainTextCitation = stripHtmlTags(citation);
-      
+      // Create a new PDF document
       const doc = new jsPDF();
-      const title = `Citation (${citationStyle}) - ${new Date().toLocaleDateString()}`;
       
-      doc.setFontSize(16);
-      doc.text(title, 20, 20);
-      
-      doc.setFontSize(12);
-      
-      // Handle text wrapping for citation
-      const maxWidth = 170;
-      const citationLines = [];
-      let text = plainTextCitation;
-      
-      while (text.length > 0) {
-        // Find the position to split the text based on max width
-        let splitPoint = text.length;
-        for (let i = 0; i < text.length; i++) {
-          const textWidth = doc.getStringUnitWidth(text.substring(0, i + 1)) * 12 * 0.352778;
-          if (textWidth > maxWidth) {
-            splitPoint = Math.max(text.lastIndexOf(' ', i), 0);
-            if (splitPoint === 0) splitPoint = i;
-            break;
-          }
-        }
-        
-        // Add the line and remove it from the text
-        citationLines.push(text.substring(0, splitPoint));
-        text = text.substring(splitPoint).trim();
-      }
-      
-      // Start the citation text at y-position 40
-      let yPos = 40;
-      
-      // Add a new page if the citation is too long
-      if (citationLines.length > 15) {
-        doc.addPage();
-        yPos = 20;
-      }
-      
-      citationLines.forEach((line) => {
-        doc.text(line, 20, yPos);
-        yPos += 7;
+      // Set document properties
+      doc.setProperties({
+        title: `Citation for ${fileName}`,
+        subject: 'Citation',
+        author: 'Cite Me',
+        keywords: 'citation, reference, bibliography',
+        creator: 'Cite Me PDF Citation Generator'
       });
+      
+      // Add title
+      doc.setFontSize(16);
+      doc.text(`Citation for: ${fileName}`, 20, 20);
+      
+      // Add citation style and date
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Style: ${citationStyle} | Generated: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      // Process the citation text to add highlighting
+      const processedCitation = processTextWithCitations(citation);
+      
+      // Add citation content
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      
+      // Split the citation into lines that fit the page width
+      const lines = doc.splitTextToSize(processedCitation, 170);
+      
+      // Check if we need a new page for the citation
+      let y = 40;
+      if (lines.length > 20) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      // Add the citation text
+      doc.text(lines, 20, y);
       
       // Add footnotes if they exist
       if (footnotes) {
-        // Check if we need a new page
-        if (yPos > 250) {
+        // Check if we need a new page for footnotes
+        if (y + (lines.length * 7) > 250) {
           doc.addPage();
-          yPos = 20;
+          y = 20;
+        } else {
+          y = y + (lines.length * 7) + 10;
         }
         
-        yPos += 10;
+        // Add footnotes header
         doc.setFontSize(14);
-        doc.text('References:', 20, yPos);
-        doc.setFontSize(10);
+        doc.text('References/Footnotes:', 20, y);
+        y += 10;
         
-        yPos += 7;
-        
-        const footnotesText = Array.isArray(footnotes) ? footnotes.join('\n\n') : footnotes;
-        
-        // Handle text wrapping for footnotes
-        const footnoteLines = [];
-        let footText = footnotesText;
-        
-        while (footText.length > 0) {
-          let splitPoint = footText.length;
-          for (let i = 0; i < footText.length; i++) {
-            const textWidth = doc.getStringUnitWidth(footText.substring(0, i + 1)) * 10 * 0.352778;
-            if (textWidth > maxWidth) {
-              splitPoint = Math.max(footText.lastIndexOf(' ', i), 0);
-              if (splitPoint === 0) splitPoint = i;
-              break;
-            }
-          }
-          
-          footnoteLines.push(footText.substring(0, splitPoint));
-          footText = footText.substring(splitPoint).trim();
+        // Process footnotes text
+        let footnotesText = '';
+        if (Array.isArray(footnotes)) {
+          footnotesText = footnotes.join('\n\n');
+        } else {
+          footnotesText = footnotes;
         }
         
-        footnoteLines.forEach((line) => {
-          // Add a new page if we're near the bottom
-          if (yPos > 280) {
-            doc.addPage();
-            yPos = 20;
-          }
-          
-          doc.text(line, 20, yPos);
-          yPos += 5;
-        });
+        // Split footnotes into lines
+        const footnotesLines = doc.splitTextToSize(footnotesText, 170);
+        
+        // Add the footnotes text
+        doc.setFontSize(12);
+        doc.text(footnotesLines, 20, y);
       }
       
       // Add page numbers
-      const totalPages = doc.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(10);
-        doc.text(`Page ${i} of ${totalPages}`, 20, 290);
+        doc.setTextColor(100);
+        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 40, doc.internal.pageSize.height - 10, { align: 'right' });
       }
       
-      // Save with a formatted filename
-      const sanitizedFileName = fileName.replace(/[^\w\s.-]/g, '_');
-      doc.save(`citation_${sanitizedFileName}.pdf`);
-    } catch (error) {
+      // Save the PDF
+      doc.save(`citation_${fileName.replace(/\.[^/.]+$/, '')}.pdf`);
+    } catch (error: any) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      setError(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
     }
   };
 
