@@ -3,11 +3,31 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+// Define types for diagnostic information
+interface DiagnosticTest {
+  name: string;
+  success: boolean;
+  error?: string;
+  result?: string;
+  status?: number;
+  data?: unknown;
+  headers?: Record<string, string>;
+}
+
+interface DiagnosticInfo {
+  supabaseUrl: string | undefined;
+  supabaseProjectId: string;
+  edgeFunctionUrl: string;
+  browser: string;
+  timestamp: string;
+  tests: DiagnosticTest[];
+}
+
 export default function EdgeFunctionTest() {
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo | null>(null);
 
   // Test the connection using various approaches
   const testEdgeFunction = async () => {
@@ -17,13 +37,13 @@ export default function EdgeFunctionTest() {
     setDiagnosticInfo(null);
 
     // Gather diagnostic information
-    const diagnostics = {
+    const diagnostics: DiagnosticInfo = {
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
       supabaseProjectId: process.env.NEXT_PUBLIC_SUPABASE_URL ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '') : 'unknown',
       edgeFunctionUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/extract-pdf-metadata` : 'unknown',
       browser: typeof window !== 'undefined' ? window.navigator.userAgent : 'SSR',
       timestamp: new Date().toISOString(),
-      tests: [] as any[]
+      tests: []
     };
 
     try {

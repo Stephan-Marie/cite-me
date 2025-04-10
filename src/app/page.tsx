@@ -22,11 +22,6 @@ interface EdgeFunctionError {
   error: string;
 }
 
-interface EdgeFunctionResponse {
-  results?: EdgeFunctionResult[];
-  errors?: EdgeFunctionError[];
-}
-
 // Add this interface at the top of the file alongside the other interfaces
 interface EdgeFunctionRequest {
   pdfUrls: { url: string; fileName: string }[];
@@ -83,11 +78,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [citationStyle, setCitationStyle] = useState<string>('OSCOLA');
-  const [diagnostics, setDiagnostics] = useState<{supabase: boolean, storage: boolean, functions: boolean}>({
-    supabase: false,
-    storage: false,
-    functions: false
-  });
   const [results, setResults] = useState<EdgeFunctionResult[]>([]);
   const [editableCitations, setEditableCitations] = useState<Record<string, string>>({});
 
@@ -106,15 +96,15 @@ export default function Home() {
     
     try {
       // Test basic Supabase connection
-      const { data, error } = await supabase.from('dummy').select('*').limit(1).maybeSingle();
+      const { error: supabaseError } = await supabase.from('dummy').select('*').limit(1).maybeSingle();
       // We expect an error about the table not existing, but not a connection error
-      results.supabase = !error || error.code !== 'PGRST301';
+      results.supabase = !supabaseError || supabaseError.code !== 'PGRST301';
       
       // Test storage
       try {
         const { data: storageData } = await supabase.storage.getBucket('pdfs');
         results.storage = !!storageData;
-      } catch (e) {
+      } catch (error) {
         // Try listing buckets as fallback
         const { data: buckets } = await supabase.storage.listBuckets();
         results.storage = Array.isArray(buckets);
@@ -123,7 +113,7 @@ export default function Home() {
       // Test functions
       try {
         // Try to ping a specific function instead of listing
-        const { data } = await supabase.functions.invoke('extract-pdf-metadata', {
+        await supabase.functions.invoke('extract-pdf-metadata', {
           body: { test: true }
         });
         results.functions = true;
@@ -131,11 +121,9 @@ export default function Home() {
         console.log('Function test error:', funcError);
         results.functions = false;
       }
-    } catch (e) {
-      console.error('Connection test error:', e);
+    } catch (error) {
+      console.error('Connection test error:', error);
     }
-    
-    setDiagnostics(results);
     
     if (!results.supabase) {
       setError('Unable to connect to Supabase. Check your API credentials.');
@@ -451,10 +439,10 @@ export default function Home() {
   };
 
   // New function to handle saving edited citations
-  const handleSaveCitation = (fileName: string, newContent: string) => {
+  const handleSaveCitation = (filename: string, newContent: string) => {
     setEditableCitations(prev => ({
       ...prev,
-      [fileName]: newContent
+      [filename]: newContent
     }));
   };
 
@@ -702,194 +690,137 @@ export default function Home() {
     return citation; // Already contains HTML with potential highlights
   };
 
-  // New function to generate PDF from edited rich content
+  // Function to generate PDF from edited rich content
   const handleDownloadPDF = (filename: string, citation: string, footnotes?: string | string[]) => {
     // Use the potentially edited citation from editableCitations if available
     const citationContent = editableCitations[filename] || citation;
 
     try {
-      // Create a new PDF document (A4 format)
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      const doc = new jsPDF();
+      const title = `Citation (${citationStyle}) - ${new Date().toLocaleDateString()}`;
+      
+      doc.setFontSize(16);
+      doc.text(title, 20, 20);
+      
+      doc.setFontSize(12);
+      
+      // Use edited content if available, otherwise use plain citation
+      const contentToUse = editableCitations[filename] || citation;
+      
+      // Handle text wrapping for citation
+      const maxWidth = 170;
+      const citationLines = [];
+      let text = contentToUse;
+      
+      while (text.length > 0) {
+        // Find the position to split the text based on max width
+        let splitPoint = text.length;
+        for (let i = 0; i < text.length; i++) {
+          const textWidth = doc.getStringUnitWidth(text.substring(0, i + 1)) * 12 * 0.352778;
+          if (textWidth > maxWidth) {
+            splitPoint = Math.max(text.lastIndexOf(' ', i), 0);
+            if (splitPoint === 0) splitPoint = i;
+            break;
+          }
+        }
+        
+        // Add the line and remove it from the text
+        citationLines.push(text.substring(0, splitPoint));
+        text = text.substring(splitPoint).trim();
+      }
+      
+      // Start the citation text at y-position 40
+      let yPos = 40;
+      
+      // Add a new page if the citation is too long
+      if (citationLines.length > 15) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      citationLines.forEach((line) => {
+        doc.text(line, 20, yPos);
+        yPos += 7;
       });
-      
-      // Define colors and styles
-      const primaryColor: [number, number, number] = [0, 102, 204]; // RGB for blue
-      const secondaryColor: [number, number, number] = [64, 64, 64]; // Dark gray for text
-      
-      // Add header to each page
-      const addHeader = (pageNum: number) => {
-        doc.setFillColor(245, 245, 245); // Light gray background
-        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 15, 'F');
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setLineWidth(0.5);
-        doc.line(0, 15, doc.internal.pageSize.getWidth(), 15);
-        
-        doc.setFontSize(10);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text('PDF Citation Generator', 10, 10);
-        
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-        doc.setFontSize(8);
-        doc.text(`Citation Style: ${citationStyle}`, doc.internal.pageSize.getWidth() - 60, 10);
-      };
-      
-      // Add footer to each page
-      const addFooter = (pageNum: number, totalPages: number) => {
-        doc.setFillColor(245, 245, 245);
-        doc.rect(0, doc.internal.pageSize.getHeight() - 15, doc.internal.pageSize.getWidth(), 15, 'F');
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setLineWidth(0.5);
-        doc.line(0, doc.internal.pageSize.getHeight() - 15, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight() - 15);
-        
-        // Add page number
-        doc.setFontSize(8);
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-        doc.text(`Page ${pageNum} of ${totalPages}`, doc.internal.pageSize.getWidth() - 30, doc.internal.pageSize.getHeight() - 5);
-        
-        // Add date
-        const currentDate = new Date().toLocaleDateString();
-        doc.text(`Generated on: ${currentDate}`, 10, doc.internal.pageSize.getHeight() - 5);
-      };
-      
-      // Add first page header
-      addHeader(1);
-      
-      // Set title with styling
-      doc.setFontSize(18);
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text(`Citation for: ${filename}`, 20, 30);
-      
-      // Add citation content
-      doc.setFontSize(11);
-      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      
-      // For rich text content, we need to strip HTML tags for PDF
-      const stripHtml = (html: string) => {
-        const tmp = document.createElement('DIV');
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || '';
-      };
-      
-      // Get plain text for PDF
-      const plainTextCitation = stripHtml(citationContent);
-      
-      // Split text into lines that fit on the page (max width ~170)
-      const splitCitation = doc.splitTextToSize(plainTextCitation, 170);
-      
-      // Start position after title
-      let yPosition = 40;
-      
-      // Add citation with auto page break handling
-      doc.text(splitCitation, 20, yPosition);
-      yPosition += doc.getTextDimensions(splitCitation).h + 15;
       
       // Add footnotes if they exist
       if (footnotes) {
-        const rawFootnotesText = typeof footnotes === 'string' 
-          ? footnotes 
-          : Array.isArray(footnotes) 
-            ? footnotes.join('\n\n')
-            : '';
-        
-        // Process footnotes based on citation style
-        const footnotesText = processBibliographyText(rawFootnotesText, citationStyle);
-        
-        // Check if we need a new page for footnotes
-        if (yPosition > 250) {
+        // Check if we need a new page
+        if (yPos > 250) {
           doc.addPage();
-          addHeader(2); // Add header to the new page
-          yPosition = 30; // Reset position on new page
+          yPos = 20;
         }
         
-        // Add a divider line
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setLineWidth(0.5);
-        doc.line(20, yPosition - 5, 190, yPosition - 5);
-        
-        // Add a footnotes section header
+        yPos += 10;
         doc.setFontSize(14);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text('References/Footnotes:', 20, yPosition);
-        yPosition += 10;
+        doc.text('References:', 20, yPos);
+        doc.setFontSize(10);
         
-        // Add the footnotes content with proper formatting
-        doc.setFontSize(9);
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+        yPos += 7;
         
-        // Process footnotes based on citation style
-        if (citationStyle === 'OSCOLA' || citationStyle === 'IEEE') {
-          // Numbered formats: each entry on a new line with proper spacing
-          const splitFootnotes = doc.splitTextToSize(footnotesText, 170);
-          doc.text(splitFootnotes, 20, yPosition);
-        } else {
-          // APA, MLA, Chicago, or other formats with hanging indents
-          const entries = footnotesText.split('\n\n');
-          
-          for (let i = 0; i < entries.length; i++) {
-            if (entries[i].trim().length === 0) continue;
-            
-            // Split the current entry to fit width
-            const splitEntry = doc.splitTextToSize(entries[i].trim(), 160);
-            
-            // Check if we need a new page
-            if (yPosition + doc.getTextDimensions(splitEntry).h + 5 > doc.internal.pageSize.getHeight() - 20) {
-              doc.addPage();
-              addHeader(doc.getNumberOfPages());
-              yPosition = 30;
+        const footnotesText = Array.isArray(footnotes) ? footnotes.join('\n\n') : footnotes;
+        
+        // Handle text wrapping for footnotes
+        const footnoteLines = [];
+        let footText = footnotesText;
+        
+        while (footText.length > 0) {
+          let splitPoint = footText.length;
+          for (let i = 0; i < footText.length; i++) {
+            const textWidth = doc.getStringUnitWidth(footText.substring(0, i + 1)) * 10 * 0.352778;
+            if (textWidth > maxWidth) {
+              splitPoint = Math.max(footText.lastIndexOf(' ', i), 0);
+              if (splitPoint === 0) splitPoint = i;
+              break;
             }
-            
-            // Add entry with proper formatting
-            doc.text(splitEntry, 20, yPosition);
-            
-            // Update position for next entry
-            yPosition += doc.getTextDimensions(splitEntry).h + 5;
           }
+          
+          footnoteLines.push(footText.substring(0, splitPoint));
+          footText = footText.substring(splitPoint).trim();
         }
+        
+        footnoteLines.forEach((line) => {
+          // Add a new page if we're near the bottom
+          if (yPos > 280) {
+            doc.addPage();
+            yPos = 20;
+          }
+          
+          doc.text(line, 20, yPos);
+          yPos += 5;
+        });
       }
       
-      // Add footers to all pages
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
+      // Add page numbers
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        addFooter(i, pageCount);
+        doc.setFontSize(10);
+        doc.text(`Page ${i} of ${totalPages}`, 20, 290);
       }
       
-      // Save the PDF
-      doc.save(`citation_${filename.replace(/\s+/g, '_')}.pdf`);
+      // Save with a formatted filename
+      const sanitizedFileName = filename.replace(/[^\w\s.-]/g, '_');
+      doc.save(`citation_${sanitizedFileName}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       setError('Failed to generate PDF: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
-  // New function to generate DOCX from edited rich content
+  // Function to generate DOCX from edited rich content
   const handleDownloadDOCX = async (filename: string, citation: string, footnotes?: string | string[]) => {
     // Use the potentially edited citation from editableCitations if available
     const citationContent = editableCitations[filename] || citation;
     
     try {
-      // Convert footnotes to string if it's an array
-      const rawFootnotesText = typeof footnotes === 'string'
-        ? footnotes
-        : Array.isArray(footnotes)
-          ? footnotes.join('\n\n')
-          : '';
+      // Use edited content if available, otherwise use plain citation
+      const contentToUse = editableCitations[filename] || citation;
+      const footnotesToUse = footnotes ? (editableCitations[`${filename}_footnotes`] || 
+        (typeof footnotes === 'string' ? footnotes : footnotes.join('\n\n'))) : '';
 
       // Process footnotes based on citation style
-      const footnotesText = processBibliographyText(rawFootnotesText, citationStyle);
-      
-      // For rich text content, we need to strip HTML tags for DOCX
-      const stripHtml = (html: string) => {
-        const tmp = document.createElement('DIV');
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || '';
-      };
-      
-      // Get plain text for DOCX
-      const plainTextCitation = stripHtml(citationContent);
+      const footnotesText = processBibliographyText(footnotesToUse, citationStyle);
 
       // Create a new docx document with professional styling
       const doc = new Document({
@@ -1030,7 +961,7 @@ export default function Home() {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: plainTextCitation,
+                  text: contentToUse,
                   size: 24
                 })
               ]
@@ -1106,6 +1037,14 @@ export default function Home() {
       console.error('Error generating DOCX:', error);
       setError('Failed to generate DOCX: ' + (error instanceof Error ? error.message : String(error)));
     }
+  };
+
+  // Add this function to handle rich text changes
+  const handleCitationChange = (filename: string) => (content: string) => {
+    setEditableCitations(prev => ({
+      ...prev,
+      [filename]: content
+    }));
   };
 
   return (
@@ -1297,7 +1236,7 @@ export default function Home() {
                           <div className="mb-2">
                             <RichTextEditor 
                               initialValue={editableCitations[filename] || citation} 
-                              onSave={(content) => handleSaveCitation(filename, content)}
+                              onSave={handleCitationChange(filename)}
                               readOnly={false}
                               height={200}
                               className="citation-editor citation-editor-masterpiece"
@@ -1314,21 +1253,24 @@ export default function Home() {
                           {hasFootnotes && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
                               <p className="font-medium text-sm text-gray-700 mb-2">References/Footnotes:</p>
-                              <div className="whitespace-pre-wrap text-sm text-gray-700 pl-2 border-l-2 border-blue-300 bg-[#f0f7ff] p-3 rounded shadow-sm">
-                                {typeof resultObj.footnotes === 'string' 
-                                  ? resultObj.footnotes 
-                                  : Array.isArray(resultObj.footnotes) 
-                                    ? resultObj.footnotes.join('\n\n')
-                                    : ''}
+                              <div className="text-sm text-gray-700 pl-2 border-l-2 border-blue-300 bg-[#f0f7ff] p-3 rounded shadow-sm">
+                                <RichTextEditor
+                                  initialValue={typeof resultObj.footnotes === 'string' 
+                                    ? resultObj.footnotes 
+                                    : Array.isArray(resultObj.footnotes) 
+                                      ? resultObj.footnotes.join('\n\n')
+                                      : ''}
+                                  onSave={handleCitationChange(`${filename}_footnotes`)}
+                                  height={150}
+                                />
                               </div>
                             </div>
                           )}
                         </div>
                       ) : (
                         <RichTextEditor 
-                          initialValue={editableCitations[filename] || citation} 
-                          onSave={(content) => handleSaveCitation(filename, content)}
-                          readOnly={false}
+                          initialValue={editableCitations[filename] || citation}
+                          onSave={handleCitationChange(filename)}
                           height={150}
                           className="citation-editor"
                           placeholder="Edit citation content..."
