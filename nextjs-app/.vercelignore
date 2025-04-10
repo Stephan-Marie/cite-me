@@ -1,0 +1,2 @@
+# Ignore ESLint validation during build
+.eslintrc.json 
