@@ -24,3 +24,164 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* TinyMCE Distraction-Free Editor Styles */
+.citation-editor .tox-tinymce {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.citation-editor .tox-toolbar__group {
+  background-color: white !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+}
+
+.citation-editor .tox-toolbar-overlord {
+  border-bottom: none !important;
+}
+
+/* Custom TinyMCE toolbar to only appear on selection */
+.tox-tinymce-aux {
+  z-index: 50 !important;
+}
+
+.tox-collection--toolbar .tox-collection__item {
+  padding: 4px !important;
+}
+
+/* Style for when editor is in focus mode */
+.tox-editor-container .tox-editor-header {
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+
+.citation-editor-masterpiece .tox-tinymce {
+  background-color: #fafcff !important;
+}
+
+/* Fade-in animation for the toolbar */
+.tox-toolbar__primary {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Styling for the placeholder */
+[data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: #8896a5;
+  font-style: italic;
+}
+
+/* Custom styling for citations */
+.prose em {
+  color: #4361ee;
+  font-style: italic;
+}
+
+.prose strong {
+  color: #1e3a8a;
+}
+
+.prose blockquote {
+  border-left: 3px solid #a3bffa;
+  background-color: #f8fafc;
+}
+
+/* Citation highlights in view mode */
+.prose .mce-annotation,
+.prose span[data-mce-annotation],
+.prose span[data-mce-annotation="citation"] {
+  background-color: #fff8c5;
+  padding: 0 1px;
+  border-bottom: 1px solid #f0c808;
+  border-radius: 2px;
+  display: inline;
+}
+
+/* Highlight style for newly cited content */
+.mce-annotation[data-mce-annotation="citation"],
+span[data-mce-annotation="citation"] {
+  background-color: #fff8c5 !important;
+  border-bottom: 1px solid #f0c808;
+  padding: 0 1px;
+  border-radius: 2px;
+  position: relative;
+}
+
+/* Styling for citation references with tooltips */
+.citation-ref {
+  position: relative;
+  display: inline;
+  cursor: pointer;
+  border-bottom: 1px dotted #4361ee;
+}
+
+/* Citation tooltip styling */
+.citation-ref:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1e293b;
+  color: white;
+  text-align: left;
+  padding: 5px 10px;
+  border-radius: 4px;
+  width: max-content;
+  max-width: 300px;
+  z-index: 1000;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: normal;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Arrow for tooltip */
+.citation-ref:hover::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1e293b transparent transparent transparent;
+  z-index: 1000;
+}
+
+/* Additional spacing for headers and paragraphs */
+.prose h3, .prose h4 {
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.prose p {
+  margin-bottom: 1em;
+}
+
+/* Improved hover effect for highlighted citations */
+.mce-annotation:hover,
+span[data-mce-annotation]:hover {
+  background-color: #ffe066 !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Bibliography section styling */
+.prose h4 + div {
+  margin-top: 0.5em;
+  margin-bottom: 1em;
+}
+
+/* Hanging indent for bibliography entries */
+.prose p[style*="text-indent"] {
+  padding-left: 2em;
+  text-indent: -2em;
+  margin-bottom: 0.5em;
+}

@@ -9,6 +9,7 @@ Cite Me is an advanced citation and footnote transcriber tool that helps researc
 - Detect improperly cited content and suggest corrections
 - Generate a comprehensive bibliography/footnotes section
 - Download citations in PDF or Word format
+- Rich text editing of citations
 - Modern, user-friendly interface
 
 ## Getting Started
@@ -20,6 +21,7 @@ To run this project locally, you need:
 - A Supabase account for storage
 - An OpenAI API key
 - Browserless API key
+- TinyMCE API key (free tier available)
 
 ### Installation
 
@@ -33,6 +35,7 @@ npm install
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_TINYMCE_API_KEY=your_tinymce_api_key
 ```
 
 4. Run the development server:
@@ -41,6 +44,14 @@ npm run dev
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## TinyMCE Integration
+
+This project uses TinyMCE for rich text editing of citations. To use TinyMCE:
+
+1. Sign up for a free API key at [https://www.tiny.cloud/auth/signup/](https://www.tiny.cloud/auth/signup/)
+2. Add your API key to the `.env.local` file as `NEXT_PUBLIC_TINYMCE_API_KEY`
+3. The free tier provides 50,000 editor initializations per month, which is sufficient for most use cases
 
 ## Edge Function Setup
 
@@ -61,6 +72,7 @@ MIT
 - Uses OpenAI's GPT models for citation generation
 - Uses Browserless for PDF processing
 - Powered by Supabase for backend functionality
+- Rich text editing by TinyMCE
 
 ## Learn More
 
