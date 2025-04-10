@@ -10,13 +10,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
-<<<<<<< HEAD
     "@tailwindcss/typography": "^0.5.16",
     "@tinymce/tinymce-react": "^6.1.0",
-=======
-    "@tinymce/tinymce-react": "^6.1.0",
     "@vercel/analytics": "^1.5.0",
->>>>>>> faa7e66ee73664149f129fcb5abf3240d2166ce6
     "docx": "^9.3.0",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
