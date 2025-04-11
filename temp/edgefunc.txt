@@ -15,32 +15,32 @@ function corsHeaders(req) {
 const citationStyleRules = {
   OSCOLA: {
     inTextFormat: 'footnote numbers in superscript',
-    referenceFormat: 'footnotes at the bottom of the page',
+    referenceFormat: 'footnotes at the bottom of the page. A new paragraph for each citation',
     example: '[1] Smith v Jones [2020] UKSC 1'
   },
   APA: {
     inTextFormat: 'author-date in parentheses',
-    referenceFormat: 'alphabetical bibliography',
+    referenceFormat: 'alphabetical bibliography. A new paragraph for each citation',
     example: '(Smith, 2020)'
   },
   MLA: {
     inTextFormat: 'author-page in parentheses',
-    referenceFormat: 'alphabetical works cited',
+    referenceFormat: 'alphabetical works cited. A new paragraph for each citation',
     example: '(Smith 42)'
   },
   IEEE: {
     inTextFormat: 'numbered references in square brackets',
-    referenceFormat: 'numbered bibliography',
+    referenceFormat: 'numbered bibliography. A new paragraph for each citation',
     example: '[1]'
   },
   Chicago: {
     inTextFormat: 'author-date or footnote numbers',
-    referenceFormat: 'bibliography or footnotes',
+    referenceFormat: 'bibliography or footnotes. A new paragraph for each citation',
     example: '(Smith 2020) or [1]'
   },
   AMA: {
     inTextFormat: 'numbered references in superscript',
-    referenceFormat: 'numbered bibliography',
+    referenceFormat: 'numbered bibliography. A new paragraph for each citation',
     example: '¹'
   }
 };
@@ -618,15 +618,16 @@ Your task is to analyze the documents and return a JSON response with exactly th
 1. improvedText: The main document text with proper in-text citations in ${citationStyle} format. 
    - Format: ${styleRule.inTextFormat}
    - Example: ${styleRule.example}
-   - If any in-text citation is added, wrap it in <mark class="uncited">...</mark> tags using my TinyMCE API.
+   - If any in-text citation is added, wrap the bracketed information or reference numbers in <mark class="uncited">...</mark> tags using my TinyMCE API.
    - DO NOT use numbered citations (like ¹) unless the style specifically requires it (like IEEE or AMA or OSCOLA).
    - For APA and MLA, always use author-date or author-page format respectively.
    - Accuracy is HIGH PRIORITY. In-text citations should be placed next to the correct sentences.
 
 2. footnotes: A complete, consolidated list of all references in proper ${citationStyle} format.
    - Format: ${styleRule.referenceFormat}
+   - Each citation MUST be on its own paragraph, separated by double line breaks (\n\n)
    - For ${citationStyle}, ensure proper ordering and formatting:
-     ${citationStyle === 'OSCOLA' ? '- Use numbered footnotes with proper legal citation format\n- Include case names in italics\n- Include statute names in italics' : citationStyle === 'APA' ? '- Alphabetical order by author surname\n- Include DOI or URL if available\n- Use hanging indent format' : citationStyle === 'MLA' ? '- Alphabetical order by author surname\n- Use hanging indent format\n- Include medium of publication' : citationStyle === 'IEEE' ? '- Numbered references in order of appearance\n- Include DOI if available\n- Use square brackets for in-text citations' : citationStyle === 'Chicago' ? '- Use either author-date or footnote style consistently\n- Include URL or DOI if available\n- Use hanging indent format' : '- Use numbered references in order of appearance\n- Include DOI if available\n- Use superscript numbers for in-text citations'}
+     ${citationStyle === 'OSCOLA' ? '- Use numbered footnotes with proper legal citation format\n- Include case names in italics\n- Include statute names in italics\n- Each footnote must be on its own paragraph, separated by double line breaks' : citationStyle === 'APA' ? '- Alphabetical order by author surname\n- Include DOI or URL if available\n- Use hanging indent format\n- Each reference must be on its own paragraph, separated by double line breaks' : citationStyle === 'MLA' ? '- Alphabetical order by author surname\n- Use hanging indent format\n- Include medium of publication\n- Each work cited entry must be on its own paragraph, separated by double line breaks' : citationStyle === 'IEEE' ? '- Numbered references in order of appearance\n- Include DOI if available\n- Use square brackets for in-text citations\n- Each reference must be on its own paragraph, separated by double line breaks' : citationStyle === 'Chicago' ? '- Use either author-date or footnote style consistently\n- Include URL or DOI if available\n- Use hanging indent format\n- Each citation must be on its own paragraph, separated by double line breaks' : '- Numbered references in order of appearance\n- Include DOI if available\n- Use superscript numbers for in-text citations\n- Each reference must be on its own paragraph, separated by double line breaks'}
 
 IMPORTANT RULES:
 - Always return a complete JSON object with all required fields
@@ -635,12 +636,13 @@ IMPORTANT RULES:
 - Ensure all citations match the ${citationStyle} format exactly
 - Do not include any text outside the JSON structure
 - DO NOT use numbered citations for APA or MLA styles
-- If numbered citations are used, they should always be superscript.
+- Citations MUST be separated by double line breaks (\n\n)
 - For APA, use (Author, Year) format
 - For MLA, use (Author Page) format
 - For Chicago, use either author-date or footnote style consistently
-- For OSCOLA, use numbered footnotes
+- For OSCOLA, use numbered footnotes in superscript
 - For IEEE and AMA, use numbered references
+- Each citation MUST be on its own paragraph with double line breaks before and after
 
 Now, here's the main document image, followed by reference documents:`
       },

@@ -33,40 +33,9 @@ interface EdgeFunctionRequest {
 const processBibliographyText = (text: string, style: string): string => {
   if (!text) return '';
   
-  // Clean up the text and ensure consistent line breaks
-  let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
-  
-  // Process based on citation style
-  switch (style) {
-    case 'APA':
-      // Ensure double spacing between entries
-      return cleanedText.split('\n\n')
-        .filter(entry => entry.trim())
-        .join('\n\n');
-      
-    case 'MLA':
-    case 'Chicago':
-      // Similar formatting to APA
-      return cleanedText.split('\n\n')
-        .filter(entry => entry.trim())
-        .join('\n\n');
-      
-    case 'OSCOLA':
-      // OSCOLA often uses footnotes with superscript numbers
-      // Clean up any numbered items and ensure proper spacing
-      return cleanedText.replace(/^\s*\d+\.\s+/gm, '').trim();
-      
-    case 'IEEE':
-      // IEEE uses numbered references in square brackets
-      // Preserve the numbers but ensure proper formatting
-      return cleanedText.replace(/^\s*\[\d+\]\s*/gm, match => `${match.trim()} `)
-        .split('\n\n')
-        .filter(entry => entry.trim())
-        .join('\n\n');
-      
-    default:
-      return cleanedText;
-  }
+  // Simply return the text as received from the edge function
+  // The edge function is responsible for proper formatting and separation
+  return text;
 };
 
 export default function Home() {
@@ -878,6 +847,7 @@ export default function Home() {
                 maxFiles={1}
                 description="Upload Your Masterpiece"
                 showDetails={false}
+                isLoading={isLoading}
               />
             </div>
           ) : (
@@ -888,6 +858,7 @@ export default function Home() {
                   onChange={handleMasterTextChange}
                   placeholder="Paste your text here..."
                   className="w-full h-full p-2 resize-none focus:outline-none text-[#1e1e1e] bg-white"
+                  disabled={isLoading}
                 ></textarea>
               </div>
             </div>
@@ -901,6 +872,7 @@ export default function Home() {
             maxFiles={10}
             description="Upload Your Reference PDFs"
             showDetails={true}
+            isLoading={isLoading}
           />
           
           {selectedFiles.length > 0 && (
