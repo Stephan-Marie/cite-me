@@ -50,6 +50,7 @@ export default function Home() {
   const [results, setResults] = useState<EdgeFunctionResult[]>([]);
   const [richTextContent, setRichTextContent] = useState<Record<string, string>>({});
   const primaryColor: [number, number, number] = [116, 105, 182]; // RGB for #7469B6
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   // Check Supabase connection on load
   useEffect(() => {
@@ -1104,11 +1105,8 @@ export default function Home() {
           <h3 className="text-lg font-semibold text-[#7469B6] mb-4">Leave Feedback</h3>
           <form onSubmit={async (e) => {
             e.preventDefault();
-            const form = e.target as HTMLFormElement;
-            const messageInput = form.elements.namedItem('message') as HTMLTextAreaElement;
-            const message = messageInput.value;
             
-            if (message.length > 35) {
+            if (feedbackMessage.length > 35) {
               setError('Message must be 35 characters or less');
               return;
             }
@@ -1119,7 +1117,7 @@ export default function Home() {
               const filename = `feedback_${timestamp}.txt`;
               
               // Convert message to blob
-              const blob = new Blob([message], { type: 'text/plain' });
+              const blob = new Blob([feedbackMessage], { type: 'text/plain' });
               
               // Upload to Supabase storage
               const { error: uploadError } = await supabase.storage
@@ -1129,7 +1127,7 @@ export default function Home() {
               if (uploadError) throw uploadError;
               
               // Clear form and show success message
-              form.reset();
+              setFeedbackMessage('');
               setError('Thank you for your feedback!');
               setTimeout(() => setError(''), 3000);
             } catch (err) {
@@ -1138,14 +1136,15 @@ export default function Home() {
           }}>
             <div className="mb-4">
               <textarea
-                name="message"
+                value={feedbackMessage}
+                onChange={(e) => setFeedbackMessage(e.target.value)}
                 maxLength={35}
                 placeholder="Your feedback (max 35 characters)"
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7469B6] focus:border-transparent"
                 rows={3}
               />
               <p className="text-sm text-gray-500 mt-1">
-                {35 - (document.querySelector('textarea[name="message"]')?.value.length || 0)} characters remaining
+                {35 - feedbackMessage.length} characters remaining
               </p>
             </div>
             <button
