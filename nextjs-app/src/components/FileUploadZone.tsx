@@ -72,8 +72,8 @@ const FileUploadZone = ({
     <div className="w-full">
       <div
         {...getRootProps()}
-        className={`border border-dashed rounded-lg p-8 text-center transition-colors h-[200px] flex flex-col items-center justify-center shadow-sm bg-white
-          ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+        className={`border-2 border-dashed rounded-lg p-4 transition-colors
+          ${isDragActive ? 'border-[#7469B6] bg-[#7469B6] bg-opacity-10' : 'border-gray-300 hover:border-gray-400'}
           ${error ? 'border-red-500 bg-red-50' : ''}
           ${isLoading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
       >

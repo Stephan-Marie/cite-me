@@ -179,7 +179,7 @@ export default function EdgeFunctionTest() {
       <button
         onClick={testEdgeFunction}
         disabled={isLoading}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+        className="px-4 py-2 bg-[#7469B6] text-white rounded hover:bg-[#5A4F8C] disabled:opacity-50"
       >
         {isLoading ? 'Testing...' : 'Test Edge Function'}
       </button>

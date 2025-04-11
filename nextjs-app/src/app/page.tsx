@@ -49,6 +49,7 @@ export default function Home() {
   const [citationStyle, setCitationStyle] = useState<string>('OSCOLA');
   const [results, setResults] = useState<EdgeFunctionResult[]>([]);
   const [richTextContent, setRichTextContent] = useState<Record<string, string>>({});
+  const primaryColor: [number, number, number] = [116, 105, 182]; // RGB for #7469B6
 
   // Check Supabase connection on load
   useEffect(() => {
@@ -776,10 +777,65 @@ export default function Home() {
 
   // Add this function to handle rich text changes
   const handleRichTextChange = (filename: string, content: string) => {
-    setRichTextContent(prev => ({
-      ...prev,
-      [filename]: content
-    }));
+    // When citation style changes, we need to update the content with the new format
+    if (content.includes('mce-annotation')) {
+      // If the content has annotations, we need to preserve them while updating the citation format
+      const updatedContent = prepareRichTextCitation(content);
+      setRichTextContent(prev => ({
+        ...prev,
+        [filename]: updatedContent
+      }));
+    } else {
+      // For plain text content, just update it directly
+      setRichTextContent(prev => ({
+        ...prev,
+        [filename]: content
+      }));
+    }
+  };
+
+  const prepareRichTextCitation = (content: string) => {
+    // Create a temporary div to parse the HTML content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+
+    // Find all citation annotations
+    const citations = tempDiv.querySelectorAll('[data-mce-annotation]');
+    
+    citations.forEach(citation => {
+      const annotation = citation.getAttribute('data-mce-annotation');
+      if (annotation) {
+        const citationData = JSON.parse(annotation);
+        const citationText = citationData.text;
+        
+        // Format the citation based on the selected style
+        let formattedCitation = '';
+        switch (citationStyle) {
+          case 'OSCOLA':
+            formattedCitation = `[${citationText}]`;
+            break;
+          case 'APA':
+            formattedCitation = `(${citationText})`;
+            break;
+          case 'MLA':
+            formattedCitation = `(${citationText})`;
+            break;
+          case 'Chicago':
+            formattedCitation = `(${citationText})`;
+            break;
+          case 'IEEE':
+            formattedCitation = `[${citationText}]`;
+            break;
+          default:
+            formattedCitation = `(${citationText})`;
+        }
+
+        // Update the citation text
+        citation.textContent = formattedCitation;
+      }
+    });
+
+    return tempDiv.innerHTML;
   };
 
   return (
@@ -821,20 +877,18 @@ export default function Home() {
         <div className="w-1/3">
           {/* Input Mode Toggle */}
           <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Your Content</h2>
-              <button
-                onClick={toggleInputMode}
-                className="text-sm text-blue-600 hover:text-blue-800 transition-colors px-3 py-2 bg-white rounded shadow-sm"
-              >
-                Switch to {inputMode === 'file' ? 'Text' : 'File'} Mode
-              </button>
-            </div>
-            <p className="text-sm text-gray-500 mb-2">
+            <h2 className="text-lg font-semibold mb-2">Your Content</h2>
+            <p className="text-sm text-gray-500 mb-4">
               {inputMode === 'file' 
                 ? 'Upload a PDF to check for proper citations' 
                 : 'Paste your text to check for proper citations'}
             </p>
+            <button
+              onClick={toggleInputMode}
+              className="text-sm text-[#7469B6] hover:text-[#5A4F8C] transition-colors px-3 py-2 bg-white rounded shadow-sm"
+            >
+              Switch to {inputMode === 'file' ? 'Text' : 'File'} Mode
+            </button>
           </div>
         
           {/* Master Content Input (File or Text) */}
@@ -883,8 +937,8 @@ export default function Home() {
                 className={`
                   px-6 py-2 rounded-lg font-medium text-white
                   ${isLoading 
-                    ? 'bg-blue-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700'}
+                    ? 'bg-[#7469B6] bg-opacity-50 cursor-not-allowed' 
+                    : 'bg-[#7469B6] hover:bg-[#5A4F8C]'}
                   transition-colors shadow-sm
                 `}
               >
@@ -900,10 +954,10 @@ export default function Home() {
               {isLoading && (
                 <div className="flex flex-col items-center gap-2">
                   <div className="relative w-8 h-8">
-                    <div className="absolute top-0 left-0 w-full h-full border-2 border-blue-200 rounded-full"></div>
-                    <div className="absolute top-0 left-0 w-full h-full border-2 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                    <div className="absolute top-0 left-0 w-full h-full border-2 border-[#7469B6] border-opacity-20 rounded-full"></div>
+                    <div className="absolute top-0 left-0 w-full h-full border-2 border-[#7469B6] rounded-full border-t-transparent animate-spin"></div>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                      <div className="w-1 h-1 bg-blue-600 rounded-full animate-ping"></div>
+                      <div className="w-1 h-1 bg-[#7469B6] rounded-full animate-ping"></div>
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
@@ -961,7 +1015,7 @@ export default function Home() {
                               citation,
                               resultObj?.footnotes
                             )}
-                            className="px-3 py-1 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors flex items-center shadow-sm"
+                            className="px-3 py-1 text-xs text-white bg-[#7469B6] hover:bg-[#5A4F8C] rounded transition-colors flex items-center shadow-sm"
                           >
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -975,7 +1029,7 @@ export default function Home() {
                               citation,
                               resultObj?.footnotes
                             )}
-                            className="px-3 py-1 text-xs text-white bg-green-600 hover:bg-green-700 rounded transition-colors flex items-center shadow-sm"
+                            className="px-3 py-1 text-xs text-white bg-[#7469B6] hover:bg-[#5A4F8C] rounded transition-colors flex items-center shadow-sm"
                           >
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2" />
@@ -987,7 +1041,7 @@ export default function Home() {
                       
                       {isImprovedText ? (
                         <div className="mb-4">
-                          <div className="text-sm text-gray-800 bg-white p-3 border border-blue-200 rounded mb-2 shadow-sm">
+                          <div className="text-sm text-gray-800 bg-white p-3 border border-[#7469B6] border-opacity-20 rounded mb-2 shadow-sm">
                             <RichTextEditor
                               initialValue={citation}
                               onChange={(content) => handleRichTextChange(filename, content)}
@@ -1043,6 +1097,66 @@ export default function Home() {
         <EdgeFunctionTest />
       </div>
       */}
+
+      {/* Feedback Form */}
+      <div className="mt-16 max-w-7xl mx-auto p-4">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-[#7469B6] mb-4">Leave Feedback</h3>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const messageInput = form.elements.namedItem('message') as HTMLTextAreaElement;
+            const message = messageInput.value;
+            
+            if (message.length > 35) {
+              setError('Message must be 35 characters or less');
+              return;
+            }
+
+            try {
+              // Create a unique filename
+              const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+              const filename = `feedback_${timestamp}.txt`;
+              
+              // Convert message to blob
+              const blob = new Blob([message], { type: 'text/plain' });
+              
+              // Upload to Supabase storage
+              const { error: uploadError } = await supabase.storage
+                .from('feedback')
+                .upload(filename, blob);
+
+              if (uploadError) throw uploadError;
+              
+              // Clear form and show success message
+              form.reset();
+              setError('Thank you for your feedback!');
+              setTimeout(() => setError(''), 3000);
+            } catch (err) {
+              setError('Failed to submit feedback. Please try again.');
+            }
+          }}>
+            <div className="mb-4">
+              <textarea
+                name="message"
+                maxLength={35}
+                placeholder="Your feedback (max 35 characters)"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7469B6] focus:border-transparent"
+                rows={3}
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                {35 - (document.querySelector('textarea[name="message"]')?.value.length || 0)} characters remaining
+              </p>
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-[#7469B6] text-white rounded hover:bg-[#5A4F8C] transition-colors"
+            >
+              Submit Feedback
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
