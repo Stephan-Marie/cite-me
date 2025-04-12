@@ -1109,7 +1109,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#f7f7f7] text-[#1e1e1e]">
+    <div className="min-h-screen p-8 bg-[#F1EFEC] text-[#1e1e1e]">
       <div className="flex justify-center mb-10">
         <img 
           src="/citeme-logo.png" 
@@ -1148,19 +1148,16 @@ export default function Home() {
           {/* Input Mode Toggle */}
           <div className="mb-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Your Content</h2>
+              <p className="text-sm text-gray-500">
+                Upload a PDF or paste uncited text.
+              </p>
               <button
                 onClick={toggleInputMode}
-                className="text-sm text-blue-600 hover:text-blue-800 transition-colors px-3 py-2 bg-white rounded shadow-sm"
+                className="text-sm text-[#715EB7] hover:text-[#5a4a96] transition-colors px-3 py-2 bg-white rounded shadow-sm"
               >
                 Switch to {inputMode === 'file' ? 'Text' : 'File'} Mode
               </button>
             </div>
-            <p className="text-sm text-gray-500 mb-2">
-              {inputMode === 'file' 
-                ? 'Upload a PDF to check for proper citations' 
-                : 'Paste your text to check for proper citations'}
-            </p>
           </div>
         
           {/* Master Content Input (File or Text) */}
@@ -1205,19 +1202,11 @@ export default function Home() {
                 disabled={isLoading}
                 className={`
                   px-6 py-2 rounded-lg font-medium text-white
-                  ${isLoading 
-                    ? 'bg-blue-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700'}
+                  ${isLoading ? 'bg-[#715EB7] cursor-not-allowed opacity-50' : 'bg-[#715EB7] hover:bg-[#5a4a96]'}
                   transition-colors shadow-sm
                 `}
               >
-                {isLoading 
-                  ? `Processing...` 
-                  : inputMode === 'file' && masterFile.length > 0
-                    ? `Cite ${selectedFiles.length + 1} Files!`
-                    : inputMode === 'text' && masterText.trim() !== ''
-                      ? `Cite Text & ${selectedFiles.length} Reference${selectedFiles.length > 1 ? 's' : ''}!`
-                      : `Cite ${selectedFiles.length} Reference${selectedFiles.length > 1 ? 's' : ''}!`}
+                {isLoading ? 'Processing...' : 'Cite Me!'}
               </button>
             </div>
           )}
@@ -1234,7 +1223,7 @@ export default function Home() {
                     value={style}
                     checked={citationStyle === style}
                     onChange={() => setCitationStyle(style)}
-                    className="mr-1.5"
+                    className="mr-1.5 accent-[#715EB7]"
                   />
                   <span className="text-sm">{style}</span>
                 </label>

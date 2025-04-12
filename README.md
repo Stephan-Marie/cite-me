@@ -1,6 +1,6 @@
-# Cite Me - PDF Citation Generator
+# cite-me - PDF Citation Generator
 
-Cite Me is an advanced citation and footnote transcriber tool that helps researchers, students, and writers generate proper citations for their work. The application can extract citations from PDF documents and check for uncited content against reference sources.
+cite-me is an advanced citation and footnote transcriber tool that helps researchers, students, and writers generate proper citations for their work. The application can extract citations from PDF documents and check for uncited content against reference sources.
 
 ## Features
 
