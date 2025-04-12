@@ -839,6 +839,13 @@ export default function Home() {
     return tempDiv.innerHTML;
   };
 
+  const handleFeedbackChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    if (value.length <= 35) {
+      setFeedbackMessage(value);
+    }
+  };
+
   return (
     <div className="min-h-screen p-8 bg-[#f7f7f7] text-[#1e1e1e]">
       <div className="flex justify-center mb-10">
@@ -1105,7 +1112,6 @@ export default function Home() {
           <h3 className="text-lg font-semibold text-[#7469B6] mb-4">Leave Feedback</h3>
           <form onSubmit={async (e) => {
             e.preventDefault();
-            
             if (feedbackMessage.length > 35) {
               setError('Message must be 35 characters or less');
               return;
@@ -1136,8 +1142,9 @@ export default function Home() {
           }}>
             <div className="mb-4">
               <textarea
+                name="message"
                 value={feedbackMessage}
-                onChange={(e) => setFeedbackMessage(e.target.value)}
+                onChange={handleFeedbackChange}
                 maxLength={35}
                 placeholder="Your feedback (max 35 characters)"
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7469B6] focus:border-transparent"
