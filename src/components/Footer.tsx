@@ -52,6 +52,36 @@ export default function Footer() {
     setSubmitStatus('idle');
 
     try {
+      console.log('Submitting feedback to API...');
+      // First submit to our API route which will handle Canny
+      const apiResponse = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message })
+      });
+
+      console.log('API response status:', apiResponse.status);
+      let apiData;
+      try {
+        apiData = await apiResponse.json();
+        console.log('API response data:', apiData);
+      } catch (e) {
+        console.error('Failed to parse API response:', e);
+        throw new Error('Failed to parse server response');
+      }
+      
+      if (!apiResponse.ok) {
+        console.error('API error response:', {
+          status: apiResponse.status,
+          statusText: apiResponse.statusText,
+          data: apiData
+        });
+        throw new Error(apiData.error || `Failed to submit feedback (${apiResponse.status})`);
+      }
+
+      // Then submit to Supabase
       console.log('Submitting feedback to Supabase...');
       const { data, error } = await supabase
         .from('feedback')
